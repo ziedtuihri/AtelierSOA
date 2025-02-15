@@ -8,7 +8,7 @@ L'objectif de cet exercice est de développer une API REST en utilisant **JAX-RS
 ## Étapes à suivre
 
 ### 1. Mise en place du Backend avec JAX-RS
-- Créez une application JAX-RS en utilisant **Java EE / Jakarta EE**.
+- Créez une application JAX-RS
 - Implémentez les classes **LogementResource** et **RendezVousResource** pour exposer les endpoints REST.
 - Assurez-vous que votre application est correctement déployée sur un serveur d'application compatible (TomEE, WildFly, GlassFish, etc.).
 - Utilisez **JPA** pour la persistance des entités.
@@ -34,7 +34,7 @@ public class LogementResource {
 
 ### 2. Développement du Client Web (HTML, CSS, JS)
 - Créez une interface web simple avec **HTML, CSS et JavaScript**.
-- Utilisez **Fetch API** ou **Axios** pour appeler les services REST du backend.
+- Utilisez **Fetch API** ou **AJAX-Jquery** pour appeler les services REST du backend.
 - Affichez les données retournées par les services web dans l'interface.
 
 #### Exemple d'appel Fetch API
