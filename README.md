@@ -63,6 +63,7 @@ Ce module de **20 heures** vise à permettre aux étudiants de :
 
 ## 🎓 Acknowledgment
 This project is part of the academic training provided by **ESPRIT School of Engineering**, aiming to equip students with industry-relevant skills in modern software development.
-Teacher: (https://www.linkedin.com/in/your-profile)
+## 👨‍🏫 Contact
+Connect with me on LinkedIn: [My LinkedIn Profile](https://www.linkedin.com/in/badiabouhdid/)
 
 ---  
