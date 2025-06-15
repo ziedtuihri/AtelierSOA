@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Gestion Logement & RendezVous</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2em;
+        }
+        table {
+            border-collapse: collapse;
+            width: 80%;
+            margin-top: 1em;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background: #f4f4f4;
+        }
+        input, select {
+            margin: 0.3em 0;
+            padding: 0.3em;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        form {
+            margin-bottom: 2em;
+            max-width: 400px;
+        }
+        button {
+            padding: 0.4em 1em;
+            margin-top: 0.5em;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<h1>Gestion des Logements</h1>
+<form id="formLogement" autocomplete="off">
+    <h3>Ajouter / Modifier Logement</h3>
+    <label>Référence (numéro): <input type="number" name="reference" required></label>
+    <label>Adresse: <input type="text" name="adresse" required></label>
+    <label>Délégation: <input type="text" name="delegation" required></label>
+    <label>Gouvernorat: <input type="text" name="gouvernorat" required></label>
+    <label>Type: <input type="text" name="type" required></label>
+    <label>Equipement: <input type="text" name="equipement" required></label>
+    <label>Prix: <input type="number" step="0.01" name="prix" required></label>
+    <button type="submit">Enregistrer Logement</button>
+</form>
+<div id="msgLogement"></div>
+<button id="btnRefreshLogements" type="button">Rafraîchir la liste des logements</button>
+<table id="tableLogements" aria-live="polite" aria-label="Liste des logements">
+    <thead>
+    <tr>
+        <th>Référence</th>
+        <th>Adresse</th>
+        <th>Délégation</th>
+        <th>Gouvernorat</th>
+        <th>Type</th>
+        <th>Equipement</th>
+        <th>Prix</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<hr>
+<h1>Gestion des Rendez-Vous</h1>
+<form id="formRendezVous" autocomplete="off">
+    <h3>Ajouter / Modifier RendezVous</h3>
+    <label>ID (pour modifier, sinon laisser vide): <input type="number" name="id"></label>
+    <label>Date (ex: 2025-06-15T10:30:00): <input type="datetime-local" name="date" required></label>
+    <label>Logement Référence (numéro): <input type="number" name="logementRef" required></label>
+    <button type="submit">Enregistrer RendezVous</button>
+</form>
+<div id="msgRdv"></div>
+<button id="btnRefreshRdv" type="button">Rafraîchir la liste des rendez-vous</button>
+<table id="tableRdv" aria-live="polite" aria-label="Liste des rendez-vous">
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Date</th>
+        <th>Logement Ref</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+<script>
+    const baseURL = 'http://localhost:8080/LogementRendezVous_Etudiant_war_exploded/api';
+
+    /* --- LOGEMENTS --- */
+    function afficherMessageLogement(msg, isError = false) {
+        $('#msgLogement').text(msg)
+            .removeClass('error success')
+            .addClass(isError ? 'error' : 'success');
+    }
+
+    function chargerLogements() {
+        $.get(baseURL + '/logement/getAll')
+            .done(data => {
+                const tbody = $('#tableLogements tbody').empty();
+                if (!Array.isArray(data) || data.length === 0) {
+                    tbody.append('<tr><td colspan="8">Aucun logement trouvé</td></tr>');
+                    return;
+                }
+                data.forEach(logement => {
+                    tbody.append(`
+                            <tr>
+                                <td>${logement.reference}</td>
+                                <td>${logement.adresse}</td>
+                                <td>${logement.delegation}</td>
+                                <td>${logement.gouvernorat}</td>
+                                <td>${logement.type}</td>
+                                <td>${logement.equipement}</td>
+                                <td>${logement.prix}</td>
+                                <td>
+                                    <button class="editLogement" data-ref="${logement.reference}">Modifier</button>
+                                    <button class="deleteLogement" data-ref="${logement.reference}">Supprimer</button>
+                                </td>
+                            </tr>`);
+                });
+            })
+            .fail(() => afficherMessageLogement("Erreur chargement logements", true));
+    }
+
+    function sendLogementData(logement, method, url) {
+        return $.ajax({
+            url: url,
+            method: method,
+            contentType: 'application/json',
+            data: JSON.stringify(logement)
+        });
+    }
+
+    $('#formLogement').submit(function(e) {
+        e.preventDefault();
+        const logement = {
+            reference: parseInt(this.reference.value),
+            adresse: this.adresse.value.trim(),
+            delegation: this.delegation.value.trim(),
+            gouvernorat: this.gouvernorat.value.trim(),
+            type: this.type.value.trim(),
+            equipement: this.equipement.value.trim(),
+            prix: parseFloat(this.prix.value)
+        };
+        $.get(`${baseURL}/logement/getByRef/${logement.reference}`)
+            .done(() => {
+                sendLogementData(logement, 'PUT', `${baseURL}/logement/update/${logement.reference}`)
+                    .done(() => {
+                        afficherMessageLogement('Logement mis à jour avec succès');
+                        chargerLogements();
+                        $('#formLogement')[0].reset();
+                    })
+                    .fail(() => {
+                        afficherMessageLogement('Erreur lors de la mise à jour du logement', true);
+                    });
+            })
+            .fail((jqXHR) => {
+                if (jqXHR.status === 404) {
+                    sendLogementData(logement, 'POST', `${baseURL}/logement/add`)
+                        .done(() => {
+                            afficherMessageLogement('Logement ajouté avec succès');
+                            chargerLogements();
+                            $('#formLogement')[0].reset();
+                        })
+                        .fail(() => {
+                            afficherMessageLogement('Erreur lors de l\'ajout du logement', true);
+                        });
+                } else {
+                    afficherMessageLogement('Erreur lors de la vérification de l\'existence du logement', true);
+                }
+            });
+    });
+
+    $('#tableLogements').on('click', '.editLogement', function() {
+        const ref = $(this).data('ref');
+        $.get(baseURL + '/logement/getByRef/' + ref)
+            .done(logement => {
+                const f = $('#formLogement')[0];
+                f.reference.value = logement.reference;
+                f.adresse.value = logement.adresse;
+                f.delegation.value = logement.delegation;
+                f.gouvernorat.value = logement.gouvernorat;
+                f.type.value = logement.type;
+                f.equipement.value = logement.equipement;
+                f.prix.value = logement.prix;
+                afficherMessageLogement(`Modification du logement ${ref}`);
+            })
+            .fail(() => afficherMessageLogement('Logement introuvable', true));
+    });
+
+    $('#tableLogements').on('click', '.deleteLogement', function() {
+        const ref = $(this).data('ref');
+        if (confirm(`Supprimer logement référence ${ref} ?`)) {
+            $.ajax({
+                url: baseURL + '/logement/delete/' + ref,
+                method: 'DELETE'
+            })
+                .done(() => {
+                    afficherMessageLogement('Logement supprimé');
+                    chargerLogements();
+                })
+                .fail(() => afficherMessageLogement('Erreur suppression logement', true));
+        }
+    });
+
+    $('#btnRefreshLogements').click(chargerLogements);
+
+    /* --- RENDEZ-VOUS --- */
+    function afficherMessageRdv(msg, isError = false) {
+        $('#msgRdv').text(msg)
+            .removeClass('error success')
+            .addClass(isError ? 'error' : 'success');
+    }
+
+    function chargerRdv() {
+        $.get(baseURL + '/rendezvous/all')
+            .done(data => {
+                const tbody = $('#tableRdv tbody').empty();
+                if (!Array.isArray(data) || data.length === 0) {
+                    tbody.append('<tr><td colspan="4">Aucun rendez-vous trouvé</td></tr>');
+                    return;
+                }
+                data.forEach(rdv => {
+                    const dateAff = new Date(rdv.date).toLocaleString();
+                    tbody.append(`
+                            <tr>
+                                <td>${rdv.id}</td>
+                                <td>${dateAff}</td>
+                                <td>${rdv.logement.reference}</td>
+                                <td>
+                                    <button class="editRdv" data-id="${rdv.id}">Modifier</button>
+                                    <button class="deleteRdv" data-id="${rdv.id}">Supprimer</button>
+                                </td>
+                            </tr>`);
+                });
+            })
+            .fail(() => afficherMessageRdv("Erreur chargement rendez-vous", true));
+    }
+
+    function ajouterOuModifierRdv(rdv, isUpdate = false) {
+        return $.ajax({
+            url: isUpdate ? `${baseURL}/rendezvous/update/${rdv.id}` : `${baseURL}/rendezvous/add`,
+            method: isUpdate ? 'PUT' : 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(rdv)
+        });
+    }
+
+    $('#formRendezVous').submit(function(e) {
+        e.preventDefault();
+        const idVal = this.id.value;
+        const rdv = {
+            id: idVal ? parseInt(idVal) : 0,
+            date: this.date.value,
+            logement: { reference: parseInt(this.logementRef.value) }
+        };
+        const isUpdate = !!idVal;
+        ajouterOuModifierRdv(rdv, isUpdate)
+            .done(() => {
+                afficherMessageRdv(isUpdate ? 'Rendez-vous mis à jour avec succès' : 'Rendez-vous ajouté avec succès');
+                chargerRdv();
+                $('#formRendezVous')[0].reset();
+            })
+            .fail(() => afficherMessageRdv('', true));
+    });
+
+    $('#tableRdv').on('click', '.editRdv', function() {
+        const id = $(this).data('id');
+        $.get(baseURL + '/rendezvous/' + id)
+            .done(rdv => {
+                const f = $('#formRendezVous')[0];
+                f.id.value = rdv.id;
+                f.date.value = rdv.date ? new Date(rdv.date).toISOString().slice(0, 16) : '';
+                f.logementRef.value = rdv.logement.reference;
+                afficherMessageRdv(`Modification du rendez-vous ID ${id}`);
+            })
+            .fail(() => afficherMessageRdv('Rendez-vous non trouvé', true));
+    });
+
+    $('#tableRdv').on('click', '.deleteRdv', function() {
+        const id = $(this).data('id');
+        if (confirm(`Supprimer rendez-vous ID ${id} ?`)) {
+            $.ajax({
+                url: baseURL + '/rendezvous/delete/' + id,
+                method: 'DELETE'
+            })
+                .done(() => {
+                    afficherMessageRdv('Rendez-vous supprimé');
+                    chargerRdv();
+                })
+                .fail(() => afficherMessageRdv('Erreur suppression rendez-vous', true));
+        }
+    });
+
+    $('#btnRefreshRdv').click(chargerRdv);
+
+    // Chargement initial
+    $(document).ready(() => {
+        chargerLogements();
+        chargerRdv();
+    });
+</script>
+</body>
+</html>
